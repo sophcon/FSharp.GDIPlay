@@ -5,7 +5,7 @@ open System.Drawing.Imaging
 open System.Runtime.InteropServices
 
 module Tools =
-    type ImageByteData = {
+    type RawImageData = {
         data:byte[];
         stride:int
     }
@@ -45,21 +45,29 @@ module Tools =
         image.UnlockBits data
 
         { data = buffer; stride = data.Stride }
+        
+    let newBitmapFromImageData data =
+        let height = data.data.Length / data.stride
+        let bitmap = new Bitmap(data.stride, height)
+        let newImageData = bitmap.LockBits(Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb)
+
+        Marshal.Copy(data.data, 0, newImageData.Scan0, data.data.Length) |> ignore
+
+        bitmap.UnlockBits newImageData |> ignore
+
+        bitmap
+
+    let getImageData stride bytes =
+        { data = bytes; stride = stride }
 
     let blendImages (baseImage:Bitmap) (overlayImage:Bitmap) =
         let baseData = getByteArrayForImage baseImage
         let overlayData = getByteArrayForImage overlayImage
     
-        let resultData = pixelMap2 baseData.data overlayData.data multiplyChannelByte    
-
-        let resultImage = new Bitmap(baseImage.Width, baseImage.Height, PixelFormat.Format32bppArgb)
-        let resultImageData = resultImage.LockBits(new Rectangle(0, 0, resultImage.Width, resultImage.Height), System.Drawing.Imaging.ImageLockMode.ReadWrite, System.Drawing.Imaging.PixelFormat.Format32bppArgb)
-
-        Marshal.Copy(resultData, 0, resultImageData.Scan0, resultData.Length)
-
-        resultImage.UnlockBits resultImageData
-
-        resultImage
+        multiplyChannelByte
+        |> pixelMap2 baseData.data overlayData.data
+        |> getImageData baseData.stride
+        |> newBitmapFromImageData
         
     let colorTransform image color =
         createSolidColorOverlay image color
