@@ -1,7 +1,16 @@
 ﻿namespace FSharp.GDIPlay
 
 module App =
+    open System
+
     [<EntryPoint>]
+    [<STAThread>]
     let main argv = 
         printfn "%A" argv
-        0 // return an integer exit code
+
+        match Utilities.GetFileFromDialog() with
+        | Some path -> 
+            let redImage = Tools.testRed path
+            redImage.Save(@"c:\tmp\test.jpg", System.Drawing.Imaging.ImageFormat.Jpeg)
+            0
+        | None -> 0

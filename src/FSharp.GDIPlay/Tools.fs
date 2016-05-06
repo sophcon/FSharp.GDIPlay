@@ -1,4 +1,4 @@
-﻿namespace Sophcon.Builder.Imaging
+﻿namespace FSharp.GDIPlay
 
 open System.Drawing
 open System.Drawing.Imaging
@@ -48,7 +48,8 @@ module Tools =
         
     let newBitmapFromImageData data =
         let height = data.data.Length / data.stride
-        let bitmap = new Bitmap(data.stride, height)
+        let width = data.stride / 4
+        let bitmap = new Bitmap(width, height)
         let newImageData = bitmap.LockBits(Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb)
 
         Marshal.Copy(data.data, 0, newImageData.Scan0, data.data.Length) |> ignore
@@ -72,3 +73,8 @@ module Tools =
     let colorTransform image color =
         createSolidColorOverlay image color
         |> blendImages image
+
+    let testRed (filepath:string) =
+        let img = new Bitmap(filepath)
+
+        colorTransform img Color.Red
