@@ -1,5 +1,6 @@
 ﻿namespace FSharp.GDIPlay
 
+open System
 open System.Drawing
 open System.Drawing.Imaging
 open System.Runtime.InteropServices
@@ -14,7 +15,7 @@ module Tools =
         channelByte * level
 
     let setInRGBRange channelByte =
-        System.Math.Min(System.Math.Max(channelByte, 255.0f), 0.0f)
+        Math.Min(Math.Max(channelByte, 255.0f), 0.0f)
 
     let multiplyChannelByte (sourceChannel:byte) (overlayChannel:byte) =
         (float32(sourceChannel)/255.0f * float32(overlayChannel)/255.0f) * 255.0f |> byte
