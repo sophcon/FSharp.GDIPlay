@@ -82,11 +82,6 @@ module Tools =
         createSolidColorOverlay image color
         |> blendImages image
 
-    let testRed (filepath:string) =
-        let img = new Bitmap(filepath)
-
-        colorTransform img Color.Red
-
     let imageByteArrayToRGBArray (bytes:byte[]) =
         let bytesPerColor = 4
         let colorCount = bytes.Length / bytesPerColor
