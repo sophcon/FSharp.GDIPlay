@@ -11,6 +11,13 @@ module Tools =
         stride:int
     }
 
+    type RGBA = {
+        red:int;
+        green:int;
+        blue:int;
+        alpha:int
+    }
+
     let adjustLevel (channelByte:float32, level:float32) =
         channelByte * level
 
@@ -79,3 +86,17 @@ module Tools =
         let img = new Bitmap(filepath)
 
         colorTransform img Color.Red
+
+    let imageByteArrayToRGBArray (bytes:byte[]) =
+        let bytesPerColor = 4
+        let colorCount = bytes.Length / bytesPerColor
+        if bytes.Length % bytesPerColor = 0 then
+            [0..colorCount - 1]
+            |> List.map (fun colorIndex ->
+                { red   = bytes.[colorIndex * bytesPerColor + 0] |> int;
+                  green = bytes.[colorIndex * bytesPerColor + 1] |> int;
+                  blue  = bytes.[colorIndex * bytesPerColor + 2] |> int;
+                  alpha = bytes.[colorIndex * bytesPerColor + 3] |> int})
+            |> Some
+        else
+            None
