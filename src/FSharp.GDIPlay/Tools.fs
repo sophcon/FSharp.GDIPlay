@@ -88,10 +88,42 @@ module Tools =
         if bytes.Length % bytesPerColor = 0 then
             [0..colorCount - 1]
             |> List.map (fun colorIndex ->
-                { red   = bytes.[colorIndex * bytesPerColor + 0] |> int;
+                {
+                  blue  = bytes.[colorIndex * bytesPerColor + 0] |> int;
                   green = bytes.[colorIndex * bytesPerColor + 1] |> int;
-                  blue  = bytes.[colorIndex * bytesPerColor + 2] |> int;
+                  red   = bytes.[colorIndex * bytesPerColor + 2] |> int;
                   alpha = bytes.[colorIndex * bytesPerColor + 3] |> int})
             |> Some
         else
             None
+
+    let getArgbFromRGBA color =
+        Color.FromArgb(color.alpha, color.red, color.green, color.blue)
+
+    let graphImageColors top colors =
+        let maxPerCol = 10
+
+        let sqHeight = 25
+        let sqWidth = 25
+
+        let height = sqHeight * maxPerCol + sqHeight
+        let columns = top / maxPerCol
+        let width = columns * sqWidth
+        
+        let bitmap = new Bitmap(width, height)
+        use graphics = Graphics.FromImage bitmap
+          
+        colors
+        |> List.groupBy (fun color -> color)
+        |> List.sortByDescending (fun (_, group) -> group.Length)
+        |> List.take top
+        |> List.mapi (fun i (color, _) ->
+            let topOffset = (i % maxPerCol) * sqHeight
+            let leftOffset = (i / columns) * sqWidth
+            let argbColor = color |> getArgbFromRGBA
+
+            (Rectangle(leftOffset, topOffset, sqHeight, sqWidth), argbColor))
+        |> List.map (fun (rect, color) -> graphics.FillRectangle(new SolidBrush(color), rect))
+        |> ignore
+
+        bitmap

@@ -12,6 +12,7 @@ module App =
         let form = new Form()
         let imageControl = new PictureBox()
         let generate = new Button()
+        let showColorDistribution = new Button()
         let rScroll = new HScrollBar()
         let gScroll = new HScrollBar()
         let bScroll = new HScrollBar()
@@ -41,19 +42,42 @@ module App =
         generate.Width <- 120
         generate.Height <- 24
         generate.Click.Add(fun a -> 
-            form.Text <- "clicked!"
-                
             match Utilities.GetFileFromDialog() with
             | Some path -> 
                 let img = new Bitmap(path)
+                let color = Color.FromArgb(rScroll.Value, gScroll.Value, bScroll.Value)
 
-                imageControl.Image <- Tools.colorTransform img (Color.FromArgb(rScroll.Value, gScroll.Value, bScroll.Value))
+                imageControl.Image <- Tools.colorTransform img color
             | None -> () )
 
-        imageControl.Top <- 24
+        showColorDistribution.Text <- "Show Color Dist."
+        showColorDistribution.Width <- 120
+        showColorDistribution.Height <- 24
+        showColorDistribution.Top <- 25
+        showColorDistribution.Click.Add(fun a ->
+            match Utilities.GetFileFromDialog() with
+            | Some path ->
+                let img = new Bitmap(path)
+                let rawImgData = img |> Tools.getByteArrayForImage
+
+                let colorList = 
+                    rawImgData.data
+                    |> Tools.imageByteArrayToRGBArray
+
+                let colorGraph =
+                    match colorList with
+                    | Some c -> imageControl.Image <- c |> Tools.graphImageColors 100
+                    | _ -> ()
+
+                ()
+            | None -> ()
+        )
+
+        imageControl.Top <- 55
         imageControl.AutoSize <- true
         form.Controls.Add(imageControl)
         form.Controls.Add(generate)
+        form.Controls.Add(showColorDistribution)
         form.Controls.Add(rScroll)
         form.Controls.Add(gScroll)
         form.Controls.Add(bScroll)
