@@ -11,6 +11,7 @@ module App =
     let main argv = 
         let form = new Form()
         let imageControl = new PictureBox()
+        let imageCloseColors = new PictureBox()
         let generate = new Button()
         let showColorDistribution = new Button()
         let rScroll = new HScrollBar()
@@ -66,7 +67,9 @@ module App =
 
                 let colorGraph =
                     match colorList with
-                    | Some c -> imageControl.Image <- c |> Tools.graphImageColors 100
+                    | Some c -> 
+                        imageControl.Image <- c |> Tools.graphImageColors 100
+                        imageCloseColors.Image <- c |> Tools.renderColorDistanceGraph
                     | _ -> ()
 
                 ()
@@ -75,7 +78,10 @@ module App =
 
         imageControl.Top <- 55
         imageControl.AutoSize <- true
+        imageCloseColors.Top <- 330
+        imageCloseColors.AutoSize <- true
         form.Controls.Add(imageControl)
+        form.Controls.Add(imageCloseColors)
         form.Controls.Add(generate)
         form.Controls.Add(showColorDistribution)
         form.Controls.Add(rScroll)

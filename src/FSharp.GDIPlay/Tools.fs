@@ -18,6 +18,13 @@ module Tools =
         alpha:int
     }
 
+    let calculateColorDistance c1 c2 =
+        let redPortion   = Math.Pow((c1.red   |> float) - (c2.red   |> float), 2.0)
+        let greenPortion = Math.Pow((c1.green |> float) - (c2.green |> float), 2.0)
+        let bluePortion  = Math.Pow((c1.blue  |> float) - (c2.blue  |> float), 2.0)
+
+        Math.Sqrt(redPortion + greenPortion + bluePortion)
+
     let adjustLevel (channelByte:float32, level:float32) =
         channelByte * level
 
@@ -120,6 +127,54 @@ module Tools =
         |> List.mapi (fun i (color, _) ->
             let topOffset = (i % maxPerCol) * sqHeight
             let leftOffset = (i / columns) * sqWidth
+            let argbColor = color |> getArgbFromRGBA
+
+            (Rectangle(leftOffset, topOffset, sqHeight, sqWidth), argbColor))
+        |> List.map (fun (rect, color) -> graphics.FillRectangle(new SolidBrush(color), rect))
+        |> ignore
+
+        bitmap
+
+    let colorDistanceForListByReference refColor listOfColors =
+        let refColorLocator = calculateColorDistance refColor
+
+        let applyRefColorLocator listColor =
+            (listColor, listColor |> refColorLocator)
+
+        listOfColors
+        |> List.map applyRefColorLocator
+
+    let renderColorDistanceGraph colors =
+        let top = 10
+        let maxPerCol = 10
+
+        let sqHeight = 25
+        let sqWidth = 25
+
+        let height = sqHeight * maxPerCol + sqHeight
+        let columns = top / maxPerCol
+        let width = columns * sqWidth
+        
+        let bitmap = new Bitmap(width, height)
+        use graphics = Graphics.FromImage bitmap
+
+        let distinctColors = 
+            colors
+            |> List.groupBy (fun color -> color)
+            |> List.sortByDescending (fun (_, group) -> group.Length)
+            |> List.map (fun (color, _) -> color)
+
+        let colorDistances =
+            match distinctColors with
+            | head::tail -> colorDistanceForListByReference head tail
+            | [] -> []
+
+        colorDistances
+        |> List.sortBy (fun (_, dist) -> dist)
+        |> List.take top
+        |> List.mapi (fun i (color, _) ->
+            let topOffset = (i % maxPerCol) * sqHeight
+            let leftOffset = 0
             let argbColor = color |> getArgbFromRGBA
 
             (Rectangle(leftOffset, topOffset, sqHeight, sqWidth), argbColor))
