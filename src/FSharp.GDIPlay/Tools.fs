@@ -107,34 +107,6 @@ module Tools =
     let getArgbFromRGBA color =
         Color.FromArgb(color.alpha, color.red, color.green, color.blue)
 
-    let graphImageColors top colors =
-        let maxPerCol = 10
-
-        let sqHeight = 25
-        let sqWidth = 25
-
-        let height = sqHeight * maxPerCol + sqHeight
-        let columns = top / maxPerCol
-        let width = columns * sqWidth
-        
-        let bitmap = new Bitmap(width, height)
-        use graphics = Graphics.FromImage bitmap
-          
-        colors
-        |> List.groupBy (fun color -> color)
-        |> List.sortByDescending (fun (_, group) -> group.Length)
-        |> List.take top
-        |> List.mapi (fun i (color, _) ->
-            let topOffset = (i % maxPerCol) * sqHeight
-            let leftOffset = (i / columns) * sqWidth
-            let argbColor = color |> getArgbFromRGBA
-
-            (Rectangle(leftOffset, topOffset, sqHeight, sqWidth), argbColor))
-        |> List.map (fun (rect, color) -> graphics.FillRectangle(new SolidBrush(color), rect))
-        |> ignore
-
-        bitmap
-
     let colorDistanceForListByReference refColor listOfColors =
         let refColorLocator = calculateColorDistance refColor
 
@@ -144,41 +116,74 @@ module Tools =
         listOfColors
         |> List.map applyRefColorLocator
 
-    let renderColorDistanceGraph colors =
-        let top = 10
-        let maxPerCol = 10
+    let newBitmap (height:int) (width:int) =
+        new Bitmap(width, height)
 
-        let sqHeight = 25
-        let sqWidth = 25
+    let applyGraphics callback bitmap =
+        use graphic = Graphics.FromImage(bitmap)
+        graphic |> callback
+        bitmap
+
+    let generateRectangle sqHeight sqWidth maxPerColumn i color =
+        let topOffset = (i % maxPerColumn) * sqHeight
+        let leftOffset = (i / maxPerColumn) * sqWidth
+        let argbColor = color |> getArgbFromRGBA
+
+        (Rectangle(leftOffset, topOffset, sqHeight, sqWidth), argbColor)
+
+    let generateRectangles sqHeight sqWidth maxPerColumn colors =
+        let rectGenerator = generateRectangle sqHeight sqWidth maxPerColumn
+
+        colors |> List.mapi rectGenerator
+
+    let rankColors colors =
+        colors
+        |> List.groupBy (fun color -> color)
+        |> List.map (fun (color, group) -> (color, group.Length))
+        |> List.sortByDescending (fun (_, rank) -> rank)
+
+    let renderColorDistanceGraph top colors =
+        let sqHeight, sqWidth, maxPerCol = 25, 25, 10
 
         let height = sqHeight * maxPerCol + sqHeight
-        let columns = top / maxPerCol
-        let width = columns * sqWidth
+        let width = ((top / maxPerCol) + 1) * sqWidth
         
-        let bitmap = new Bitmap(width, height)
-        use graphics = Graphics.FromImage bitmap
-
-        let distinctColors = 
-            colors
-            |> List.groupBy (fun color -> color)
-            |> List.sortByDescending (fun (_, group) -> group.Length)
-            |> List.map (fun (color, _) -> color)
+        let rectangleGenerator = generateRectangle sqHeight sqWidth maxPerCol
+        let distinctColorsOnly = rankColors colors |> List.map (fun (color, _) -> color)
 
         let colorDistances =
-            match distinctColors with
+            match distinctColorsOnly with
             | head::tail -> colorDistanceForListByReference head tail
             | [] -> []
 
-        colorDistances
-        |> List.sortBy (fun (_, dist) -> dist)
-        |> List.take top
-        |> List.mapi (fun i (color, _) ->
-            let topOffset = (i % maxPerCol) * sqHeight
-            let leftOffset = 0
-            let argbColor = color |> getArgbFromRGBA
+        newBitmap height width
+        :> Image
+        |> applyGraphics (fun g ->
+            colorDistances
+            |> List.sortBy (fun (_, dist) -> dist)
+            |> List.map (fun (color, _) -> color)
+            |> List.mapi rectangleGenerator
+            |> List.map (fun (rect, color) -> 
+                g.FillRectangle(new SolidBrush(color), rect))
+            |> ignore)
 
-            (Rectangle(leftOffset, topOffset, sqHeight, sqWidth), argbColor))
-        |> List.map (fun (rect, color) -> graphics.FillRectangle(new SolidBrush(color), rect))
-        |> ignore
 
-        bitmap
+    let graphImageColors top colors =
+        let sqHeight, sqWidth, maxPerCol = 25, 25, 10
+
+        let height = sqHeight * maxPerCol + sqHeight
+        let width = ((top / maxPerCol) + 1) * sqWidth
+        
+        let rectangleGenerator = generateRectangle sqHeight sqWidth maxPerCol
+          
+        let rankedColors = rankColors colors
+
+        newBitmap height width
+        :> Image
+        |> applyGraphics (fun g ->
+            rankedColors
+            |> List.map (fun (color, _) -> color)
+            |> List.mapi rectangleGenerator
+            |> List.map (fun (rect, color) -> 
+                g.FillRectangle(new SolidBrush(color), rect))
+            |> ignore)

@@ -65,14 +65,11 @@ module App =
                     rawImgData.data
                     |> Tools.imageByteArrayToRGBArray
 
-                let colorGraph =
-                    match colorList with
-                    | Some c -> 
-                        imageControl.Image <- c |> Tools.graphImageColors 100
-                        imageCloseColors.Image <- c |> Tools.renderColorDistanceGraph
-                    | _ -> ()
-
-                ()
+                match colorList with
+                | Some c -> 
+                    imageControl.Image <- c |> Tools.graphImageColors 100
+                    imageCloseColors.Image <- c |> Tools.renderColorDistanceGraph 100
+                | _ -> ()
             | None -> ()
         )
 
