@@ -2,9 +2,9 @@
 
 module App =
     open System
+    open System.Diagnostics
     open System.Drawing
     open System.Windows.Forms
-    open System.Windows.Input
 
     [<EntryPoint>]
     [<STAThread>]
@@ -17,6 +17,7 @@ module App =
         let rScroll = new HScrollBar()
         let gScroll = new HScrollBar()
         let bScroll = new HScrollBar()
+        let distanceThreshold = new HScrollBar()
 
         rScroll.Top <- 0
         rScroll.Left <- 130
@@ -38,6 +39,13 @@ module App =
         bScroll.Minimum <- 0
         bScroll.Width <- 300
         bScroll.Height <-15
+
+        distanceThreshold.Top <- 310
+        distanceThreshold.Left <- 50
+        distanceThreshold.Maximum <- 400
+        distanceThreshold.Minimum <- 0
+        distanceThreshold.Width <- 300
+        distanceThreshold.Height <- 15
 
         generate.Text <- "Generate"
         generate.Width <- 120
@@ -68,7 +76,23 @@ module App =
                 match colorList with
                 | Some c -> 
                     imageControl.Image <- c |> Tools.graphImageColors 100
-                    imageCloseColors.Image <- c |> Tools.renderColorDistanceGraph 100
+                    imageCloseColors.Image <- c |> Tools.renderColorDistanceGraph 0 100 0.0
+                    imageControl.Click.Add (fun args ->
+                        let mouseEvent = args :?> MouseEventArgs
+                        let threshold = distanceThreshold.Value |> float
+
+                        let coordString = sprintf "%i:%i" mouseEvent.X mouseEvent.Y
+                        Debug.WriteLine(coordString)
+
+                        let row = mouseEvent.Y / 25 |> int |> (+) 1
+                        let column = mouseEvent.X / 25 |> int |> (+) 1
+                        Debug.WriteLine("row: " + row.ToString() + ", col: " + column.ToString())
+            
+                        let index = (column - 1) * 10 + (row - 1)
+                        Debug.WriteLine("index: " + index.ToString())
+
+            
+                        imageCloseColors.Image <- c |> Tools.renderColorDistanceGraph index 100 threshold)
                 | _ -> ()
             | None -> ()
         )
@@ -84,6 +108,7 @@ module App =
         form.Controls.Add(rScroll)
         form.Controls.Add(gScroll)
         form.Controls.Add(bScroll)
+        form.Controls.Add(distanceThreshold)
 
         form.ShowDialog() |> ignore
         0

@@ -131,6 +131,13 @@ module Tools =
 
         (Rectangle(leftOffset, topOffset, sqHeight, sqWidth), argbColor)
 
+    let generateLabels itemHeight itemWidth maxPerColumn i text =
+        let topOffset = (i % maxPerColumn) * itemHeight |> float32
+        let leftOffset = ((i / maxPerColumn) * itemWidth) + 25 |> float32
+
+        (leftOffset, topOffset, text)
+
+
     let generateRectangles sqHeight sqWidth maxPerColumn colors =
         let rectGenerator = generateRectangle sqHeight sqWidth maxPerColumn
 
@@ -142,25 +149,36 @@ module Tools =
         |> List.map (fun (color, group) -> (color, group.Length))
         |> List.sortByDescending (fun (_, rank) -> rank)
 
-    let renderColorDistanceGraph top colors =
-        let sqHeight, sqWidth, maxPerCol = 25, 25, 10
+    let renderColorDistanceGraph index top distanceThreshold colors =
+        let sqHeight, sqWidth, maxPerCol = 25, 25, 100
 
-        let height = sqHeight * maxPerCol + sqHeight
-        let width = ((top / maxPerCol) + 1) * sqWidth
         
         let rectangleGenerator = generateRectangle sqHeight sqWidth maxPerCol
+        let labelGenerator = generateLabels sqHeight 300 100
         let distinctColorsOnly = rankColors colors |> List.map (fun (color, _) -> color)
 
-        let colorDistances =
-            match distinctColorsOnly with
-            | head::tail -> colorDistanceForListByReference head tail
-            | [] -> []
+        let colorDistances = colorDistanceForListByReference distinctColorsOnly.[index] distinctColorsOnly.[(index + 1)..]
+
+        let orderedColorsByDist =
+            colorDistances
+            |> List.filter (fun (_, dist) -> dist <= distanceThreshold)
+            |> List.sortBy (fun (_, dist) -> dist)
+
+        let newTop = if (orderedColorsByDist.Length < top) then colorDistances.Length else top
+        let height = sqHeight * maxPerCol + sqHeight
+        let width = (((newTop / maxPerCol) + 1) * sqWidth) + 300
 
         newBitmap height width
         :> Image
         |> applyGraphics (fun g ->
-            colorDistances
-            |> List.sortBy (fun (_, dist) -> dist)
+            orderedColorsByDist
+            |> List.map (fun (_, dist) -> dist.ToString())
+            |> List.mapi labelGenerator
+            |> List.map (fun (x, y, text) ->
+                g.DrawString(text, new Font("Arial", float32(11)), new SolidBrush(Color.Black), x, y))
+            |> ignore
+
+            orderedColorsByDist
             |> List.map (fun (color, _) -> color)
             |> List.mapi rectangleGenerator
             |> List.map (fun (rect, color) -> 
@@ -171,7 +189,7 @@ module Tools =
     let graphImageColors top colors =
         let sqHeight, sqWidth, maxPerCol = 25, 25, 10
 
-        let height = sqHeight * maxPerCol + sqHeight
+        let height = sqHeight * maxPerCol
         let width = ((top / maxPerCol) + 1) * sqWidth
         
         let rectangleGenerator = generateRectangle sqHeight sqWidth maxPerCol
