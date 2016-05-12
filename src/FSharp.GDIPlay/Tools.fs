@@ -237,7 +237,7 @@ module Tools =
     let createColorMap threshold distanceGraph =
         distanceGraph
         |> List.filter (fun dColor -> dColor.distance <= threshold)
-        |> List.sortBy (fun dColor -> dColor.distance)
+        |> List.sortBy (fun dColor -> dColor.color1.rank)
         |> List.map (fun dColor -> dColor.color2.color, dColor.color1.color)
         |> Map.ofList
 
