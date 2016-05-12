@@ -18,12 +18,26 @@ module Tools =
         alpha:int
     }
 
+    type RankedColor = {
+        color:RGBA;
+        rank:int;
+    }
+
+    type ColorDistance = {
+        color1:RankedColor;
+        color2:RankedColor;
+        distance:float;
+    }
+
     let calculateColorDistance c1 c2 =
         let redPortion   = Math.Pow((c1.red   |> float) - (c2.red   |> float), 2.0)
         let greenPortion = Math.Pow((c1.green |> float) - (c2.green |> float), 2.0)
         let bluePortion  = Math.Pow((c1.blue  |> float) - (c2.blue  |> float), 2.0)
 
         Math.Sqrt(redPortion + greenPortion + bluePortion)
+
+    let calculateRankedColorDistance rc1 rc2 =
+        calculateColorDistance rc1.color rc2.color
 
     let adjustLevel (channelByte:float32, level:float32) =
         channelByte * level
@@ -146,41 +160,37 @@ module Tools =
     let rankColors colors =
         colors
         |> List.groupBy (fun color -> color)
-        |> List.map (fun (color, group) -> (color, group.Length))
-        |> List.sortByDescending (fun (_, rank) -> rank)
+        |> List.map (fun (color, group) -> { color = color; rank = group.Length})
+        |> List.sortByDescending (fun rcolor -> rcolor.rank)
 
-    let renderColorDistanceGraph index top distanceThreshold colors =
+    let renderColorDistanceGraph colors =
         let sqHeight, sqWidth, maxPerCol = 25, 25, 100
-
         
         let rectangleGenerator = generateRectangle sqHeight sqWidth maxPerCol
         let labelGenerator = generateLabels sqHeight 300 100
-        let distinctColorsOnly = rankColors colors |> List.map (fun (color, _) -> color)
 
-        let colorDistances = colorDistanceForListByReference distinctColorsOnly.[index] distinctColorsOnly.[(index + 1)..]
+        let labelData =
+            colors
+            |> List.map (fun dcolor -> dcolor.distance.ToString())
+            |> List.mapi labelGenerator
 
-        let orderedColorsByDist =
-            colorDistances
-            |> List.filter (fun (_, dist) -> dist <= distanceThreshold)
-            |> List.sortBy (fun (_, dist) -> dist)
+        let rectangleData =
+            colors
+            |> List.map (fun dcolor -> dcolor.color2.color)
+            |> List.mapi rectangleGenerator
 
-        let newTop = if (orderedColorsByDist.Length < top) then colorDistances.Length else top
         let height = sqHeight * maxPerCol + sqHeight
-        let width = (((newTop / maxPerCol) + 1) * sqWidth) + 300
+        let width = (((colors.Length / maxPerCol) + 1) * sqWidth) + 300
 
         newBitmap height width
         :> Image
         |> applyGraphics (fun g ->
-            orderedColorsByDist
-            |> List.map (fun (_, dist) -> dist.ToString())
-            |> List.mapi labelGenerator
+            labelData
             |> List.map (fun (x, y, text) ->
                 g.DrawString(text, new Font("Arial", float32(11)), new SolidBrush(Color.Black), x, y))
             |> ignore
 
-            orderedColorsByDist
-            |> List.map (fun (color, _) -> color)
-            |> List.mapi rectangleGenerator
+            rectangleData
             |> List.map (fun (rect, color) -> 
                 g.FillRectangle(new SolidBrush(color), rect))
             |> ignore)
@@ -200,8 +210,26 @@ module Tools =
         :> Image
         |> applyGraphics (fun g ->
             rankedColors
-            |> List.map (fun (color, _) -> color)
+            |> List.map (fun rcolor -> rcolor.color)
             |> List.mapi rectangleGenerator
             |> List.map (fun (rect, color) -> 
                 g.FillRectangle(new SolidBrush(color), rect))
             |> ignore)
+
+    let createCompleteDistanceGraph rankedColors =
+        
+        let rec innerCreate colors =
+            match colors with
+            | head::tail ->
+
+                let distances = 
+                    tail
+                    |> List.map (fun rcolor ->
+                        let dist = rcolor |> calculateRankedColorDistance head
+                        { color1 = head; color2 = rcolor; distance = dist })
+
+                List.concat [distances; (innerCreate tail)]
+            | [] -> []
+
+
+        rankedColors |> innerCreate

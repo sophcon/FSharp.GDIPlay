@@ -73,10 +73,23 @@ module App =
                     rawImgData.data
                     |> Tools.imageByteArrayToRGBArray
 
+                let rankedColors =
+                    match colorList with
+                    | Some colors -> colors |> Tools.rankColors
+                    | None -> []
+
+                let distanceGraph =
+                    rankedColors |> Tools.createCompleteDistanceGraph
+
+
                 match colorList with
                 | Some c -> 
                     imageControl.Image <- c |> Tools.graphImageColors 100
-                    imageCloseColors.Image <- c |> Tools.renderColorDistanceGraph 0 100 0.0
+                    imageCloseColors.Image <- 
+                        distanceGraph
+                        |> List.filter (fun dColor -> dColor.distance <= 0.0)
+                        |> Tools.renderColorDistanceGraph
+
                     imageControl.Click.Add (fun args ->
                         let mouseEvent = args :?> MouseEventArgs
                         let threshold = distanceThreshold.Value |> float
@@ -92,7 +105,13 @@ module App =
                         Debug.WriteLine("index: " + index.ToString())
 
             
-                        imageCloseColors.Image <- c |> Tools.renderColorDistanceGraph index 100 threshold)
+                        let refColor = rankedColors.[index]
+
+                        imageCloseColors.Image <- 
+                            distanceGraph
+                            |> List.filter (fun dColor -> dColor.distance <= threshold)
+                            //|> List.filter (fun dColor -> dColor.color1 = refColor)
+                            |> Tools.renderColorDistanceGraph )
                 | _ -> ()
             | None -> ()
         )
