@@ -106,12 +106,24 @@ module App =
 
             
                         let refColor = rankedColors.[index]
-
-                        imageCloseColors.Image <- 
+                        let filteredGraph = 
                             distanceGraph
                             |> List.filter (fun dColor -> dColor.distance <= threshold)
+
+
+                        imageCloseColors.Image <- 
+                            filteredGraph
                             //|> List.filter (fun dColor -> dColor.color1 = refColor)
-                            |> Tools.renderColorDistanceGraph )
+                            |> Tools.renderColorDistanceGraph 
+
+                        Debug.WriteLine("filtered graph: " + filteredGraph.Length.ToString())
+
+                        let colorMap = distanceGraph |> Tools.createColorMap threshold
+                        Debug.WriteLine("colorMap: " + colorMap.Count.ToString())
+                        
+                            )
+
+                        
                 | _ -> ()
             | None -> ()
         )

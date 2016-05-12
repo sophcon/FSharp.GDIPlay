@@ -228,8 +228,15 @@ module Tools =
                         let dist = rcolor |> calculateRankedColorDistance head
                         { color1 = head; color2 = rcolor; distance = dist })
 
-                List.concat [distances; (innerCreate tail)]
+                List.concat [distances; innerCreate tail]
             | [] -> []
 
 
         rankedColors |> innerCreate
+
+    let createColorMap threshold distanceGraph =
+        distanceGraph
+        |> List.filter (fun dColor -> dColor.distance <= threshold)
+        |> List.sortBy (fun dColor -> dColor.distance)
+        |> List.map (fun dColor -> dColor.color2, dColor.color2)
+        |> Map.ofList
