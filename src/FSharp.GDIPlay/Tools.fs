@@ -113,7 +113,7 @@ module Tools =
                   blue  = bytes.[colorIndex * bytesPerColor + 0] |> int;
                   green = bytes.[colorIndex * bytesPerColor + 1] |> int;
                   red   = bytes.[colorIndex * bytesPerColor + 2] |> int;
-                  alpha = bytes.[colorIndex * bytesPerColor + 3] |> int})
+                  alpha = bytes.[colorIndex * bytesPerColor + 3] |> int;})
             |> Some
         else
             None
@@ -238,5 +238,21 @@ module Tools =
         distanceGraph
         |> List.filter (fun dColor -> dColor.distance <= threshold)
         |> List.sortBy (fun dColor -> dColor.distance)
-        |> List.map (fun dColor -> dColor.color2, dColor.color2)
+        |> List.map (fun dColor -> dColor.color2.color, dColor.color1.color)
         |> Map.ofList
+
+    let colorListToByteArray colors =
+        colors
+        |> List.collect (fun color -> 
+            [
+                (color.blue  |> byte);
+                (color.green |> byte);
+                (color.red   |> byte);
+                (color.alpha |> byte);
+            ])
+        |> List.toArray
+
+    let getMappedColorOrSelf (colorMap:Map<RGBA, RGBA>) color =
+        match colorMap.TryFind(color) with
+        | Some mappedColor -> mappedColor
+        | None -> color

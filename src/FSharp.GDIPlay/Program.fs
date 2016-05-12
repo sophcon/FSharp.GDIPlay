@@ -12,6 +12,8 @@ module App =
         let form = new Form()
         let imageControl = new PictureBox()
         let imageCloseColors = new PictureBox()
+        let imageBefore = new PictureBox()
+        let imageAfter = new PictureBox()
         let generate = new Button()
         let showColorDistribution = new Button()
         let rScroll = new HScrollBar()
@@ -70,70 +72,86 @@ module App =
                 let rawImgData = img |> Tools.getByteArrayForImage
 
                 let colorList = 
-                    rawImgData.data
-                    |> Tools.imageByteArrayToRGBArray
-
-                let rankedColors =
-                    match colorList with
-                    | Some colors -> colors |> Tools.rankColors
+                    match (rawImgData.data |> Tools.imageByteArrayToRGBArray) with
+                    | Some colors -> colors
                     | None -> []
+
+                let rankedColors = colorList |> Tools.rankColors
 
                 let distanceGraph =
                     rankedColors |> Tools.createCompleteDistanceGraph
 
 
-                match colorList with
-                | Some c -> 
-                    imageControl.Image <- c |> Tools.graphImageColors 100
-                    imageCloseColors.Image <- 
+                imageControl.Image <- colorList |> Tools.graphImageColors 100
+                imageCloseColors.Image <- 
+                    distanceGraph
+                    |> List.filter (fun dColor -> dColor.distance <= 0.0)
+                    |> Tools.renderColorDistanceGraph
+
+                imageControl.Click.Add (fun args ->
+                    let mouseEvent = args :?> MouseEventArgs
+                    let threshold = distanceThreshold.Value |> float
+
+                    let coordString = sprintf "%i:%i" mouseEvent.X mouseEvent.Y
+                    Debug.WriteLine(coordString)
+
+                    let row = mouseEvent.Y / 25 |> int |> (+) 1
+                    let column = mouseEvent.X / 25 |> int |> (+) 1
+                    Debug.WriteLine("row: " + row.ToString() + ", col: " + column.ToString())
+            
+                    let index = (column - 1) * 10 + (row - 1)
+                    Debug.WriteLine("index: " + index.ToString())
+
+            
+                    let refColor = rankedColors.[index]
+                    let filteredGraph = 
                         distanceGraph
-                        |> List.filter (fun dColor -> dColor.distance <= 0.0)
-                        |> Tools.renderColorDistanceGraph
-
-                    imageControl.Click.Add (fun args ->
-                        let mouseEvent = args :?> MouseEventArgs
-                        let threshold = distanceThreshold.Value |> float
-
-                        let coordString = sprintf "%i:%i" mouseEvent.X mouseEvent.Y
-                        Debug.WriteLine(coordString)
-
-                        let row = mouseEvent.Y / 25 |> int |> (+) 1
-                        let column = mouseEvent.X / 25 |> int |> (+) 1
-                        Debug.WriteLine("row: " + row.ToString() + ", col: " + column.ToString())
-            
-                        let index = (column - 1) * 10 + (row - 1)
-                        Debug.WriteLine("index: " + index.ToString())
-
-            
-                        let refColor = rankedColors.[index]
-                        let filteredGraph = 
-                            distanceGraph
-                            |> List.filter (fun dColor -> dColor.distance <= threshold)
+                        |> List.filter (fun dColor -> dColor.distance <= threshold)
 
 
-                        imageCloseColors.Image <- 
-                            filteredGraph
-                            //|> List.filter (fun dColor -> dColor.color1 = refColor)
-                            |> Tools.renderColorDistanceGraph 
+                    imageCloseColors.Image <- 
+                        filteredGraph
+                        //|> List.filter (fun dColor -> dColor.color1 = refColor)
+                        |> Tools.renderColorDistanceGraph 
 
-                        Debug.WriteLine("filtered graph: " + filteredGraph.Length.ToString())
+                    Debug.WriteLine("filtered graph: " + filteredGraph.Length.ToString())
 
-                        let colorMap = distanceGraph |> Tools.createColorMap threshold
-                        Debug.WriteLine("colorMap: " + colorMap.Count.ToString())
+                    let colorMap = distanceGraph |> Tools.createColorMap threshold
+                    Debug.WriteLine("colorMap: " + colorMap.Count.ToString())
                         
-                            )
+                    imageBefore.Image <- img
+                    imageBefore.Top <- 0
 
+                    let mappedColors = 
+                        colorList 
+                        |> List.map (Tools.getMappedColorOrSelf colorMap)
+                        |> Tools.colorListToByteArray
+
+                    let newImage = 
+                        {
+                            Tools.RawImageData.stride = rawImgData.stride; 
+                            Tools.RawImageData.data = mappedColors }
+                        |> Tools.newBitmapFromImageData
+
+                    imageAfter.Image <- newImage
+                    imageAfter.Top <- img.Height + 10
+                    )
                         
-                | _ -> ()
-            | None -> ()
+            | _ -> ()
         )
 
         imageControl.Top <- 55
         imageControl.AutoSize <- true
         imageCloseColors.Top <- 330
         imageCloseColors.AutoSize <- true
+        imageBefore.Left <- 500
+        imageBefore.AutoSize <- true
+        imageAfter.Left <- 500
+        imageAfter.AutoSize <- true
         form.Controls.Add(imageControl)
         form.Controls.Add(imageCloseColors)
+        form.Controls.Add(imageBefore)
+        form.Controls.Add(imageAfter)
         form.Controls.Add(generate)
         form.Controls.Add(showColorDistribution)
         form.Controls.Add(rScroll)
