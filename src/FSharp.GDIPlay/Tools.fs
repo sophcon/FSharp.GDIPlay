@@ -6,6 +6,8 @@ open System.Drawing.Imaging
 open System.Runtime.InteropServices
 
 module Tools =
+    open System.Diagnostics
+
     type RawImageData = {
         data:byte[];
         stride:int
@@ -256,3 +258,69 @@ module Tools =
         match colorMap.TryFind(color) with
         | Some mappedColor -> mappedColor
         | None -> color
+
+    let graphRankedColors height rankedColors =
+        let columnWidth, padding = 25, 10
+
+        let sum = 
+            rankedColors
+            |> List.sumBy (fun rankedColor -> rankedColor.rank |> float)
+
+        let averages = 
+            rankedColors 
+            |> List.map (fun rankedColor -> 
+                (rankedColor, ((rankedColor.rank |> float) / sum) ) )
+
+        let max =
+            averages |> List.map (fun (_, average) -> average) |> List.max
+
+        let width = 
+            (padding * (rankedColors.Length - 1)) + (columnWidth * rankedColors.Length - 1)
+
+        let rectangleData =
+            averages
+            |> List.mapi (fun i (color, average) ->
+                let leftOffset = i * (padding + columnWidth)
+                let columnHeight = ((height |> float) * (average / max)) |> int
+                let top = height - columnHeight
+
+                (
+                    new SolidBrush(color.color |> getArgbFromRGBA), 
+                    Rectangle(leftOffset, top, columnWidth, columnHeight)
+                ))
+
+        newBitmap height width
+        |> applyGraphics (fun g -> 
+            rectangleData
+            |> List.map (fun pair -> pair |> g.FillRectangle )
+            |> ignore )
+
+    let generateNoiseFromRankedColors width height rankedColors =
+        let sum = 
+            rankedColors
+            |> List.sumBy (fun rankedColor -> rankedColor.rank |> float)
+
+        let averages = 
+            rankedColors 
+            |> List.map (fun rankedColor -> 
+                (rankedColor, ((rankedColor.rank |> float) / sum) ) )
+
+        let pixelTotal = height * width
+        let rnd = Random()
+
+        newBitmap height width
+        |> applyGraphics (fun g -> 
+            let largest, _ = averages.[0]
+            g.FillRectangle(new SolidBrush(largest.color |> getArgbFromRGBA), 0, 0, width, height)
+            
+            averages.[1..]
+            |> List.map (fun (rankedColor, average) ->
+                Debug.WriteLine(sprintf "Creating '%i' pixels" ((pixelTotal |> float) * average |> int))
+                [0..((pixelTotal |> float) * average |> int)]
+                |> List.map (fun _ -> 
+                    let x, y =  rnd.Next(width), rnd.Next(height)
+                    let color = new SolidBrush(rankedColor.color |> getArgbFromRGBA)
+                    g.FillRectangle(color, x, y, 1, 1)
+                ))
+            |> ignore )
+        

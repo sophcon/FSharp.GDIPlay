@@ -54,6 +54,8 @@
     <Compile Include="Tools.fs" />
     <Compile Include="BitmapFilterData.fs" />
     <Compile Include="Utilities.fs" />
+    <Compile Include="ImagePlayForm.fs" />
+    <Compile Include="ColorBreakdownForm.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <PropertyGroup>
