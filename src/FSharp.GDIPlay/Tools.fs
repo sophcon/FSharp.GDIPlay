@@ -25,6 +25,11 @@ module Tools =
         rank:int;
     }
 
+    type AveragedColor = {
+        rankedColor:RankedColor;
+        average:float;
+    }
+
     type ColorDistance = {
         color1:RankedColor;
         color2:RankedColor;
@@ -120,7 +125,7 @@ module Tools =
         else
             None
 
-    let getArgbFromRGBA color =
+    let getRGBAToColor color =
         Color.FromArgb(color.alpha, color.red, color.green, color.blue)
 
     let colorDistanceForListByReference refColor listOfColors =
@@ -143,7 +148,7 @@ module Tools =
     let generateRectangle sqHeight sqWidth maxPerColumn i color =
         let topOffset = (i % maxPerColumn) * sqHeight
         let leftOffset = (i / maxPerColumn) * sqWidth
-        let argbColor = color |> getArgbFromRGBA
+        let argbColor = color |> getRGBAToColor
 
         (Rectangle(leftOffset, topOffset, sqHeight, sqWidth), argbColor)
 
@@ -259,33 +264,34 @@ module Tools =
         | Some mappedColor -> mappedColor
         | None -> color
 
+    let getColorAverages rankedColors =
+        let sum = rankedColors |> List.sumBy (fun rankedColor -> rankedColor.rank |> float)
+
+        rankedColors 
+        |> List.map (fun rankedColor -> 
+            let average = (rankedColor.rank |> float) / sum
+            { rankedColor = rankedColor; average = average })
+
     let graphRankedColors height rankedColors =
         let columnWidth, padding = 25, 10
 
-        let sum = 
-            rankedColors
-            |> List.sumBy (fun rankedColor -> rankedColor.rank |> float)
-
-        let averages = 
-            rankedColors 
-            |> List.map (fun rankedColor -> 
-                (rankedColor, ((rankedColor.rank |> float) / sum) ) )
+        let averages = rankedColors |> getColorAverages
 
         let max =
-            averages |> List.map (fun (_, average) -> average) |> List.max
+            averages |> List.map (fun aColor -> aColor.average) |> List.max
 
         let width = 
             (padding * (rankedColors.Length - 1)) + (columnWidth * rankedColors.Length - 1)
 
         let rectangleData =
             averages
-            |> List.mapi (fun i (color, average) ->
+            |> List.mapi (fun i aColor ->
                 let leftOffset = i * (padding + columnWidth)
-                let columnHeight = ((height |> float) * (average / max)) |> int
+                let columnHeight = ((height |> float) * (aColor.average / max)) |> int
                 let top = height - columnHeight
 
                 (
-                    new SolidBrush(color.color |> getArgbFromRGBA), 
+                    new SolidBrush(aColor.rankedColor.color |> getRGBAToColor), 
                     Rectangle(leftOffset, top, columnWidth, columnHeight)
                 ))
 
@@ -311,7 +317,7 @@ module Tools =
         newBitmap height width
         |> applyGraphics (fun g -> 
             let largest, _ = averages.[0]
-            g.FillRectangle(new SolidBrush(largest.color |> getArgbFromRGBA), 0, 0, width, height)
+            g.FillRectangle(new SolidBrush(largest.color |> getRGBAToColor), 0, 0, width, height)
             
             averages.[1..]
             |> List.map (fun (rankedColor, average) ->
@@ -319,8 +325,44 @@ module Tools =
                 [0..((pixelTotal |> float) * average |> int)]
                 |> List.map (fun _ -> 
                     let x, y =  rnd.Next(width), rnd.Next(height)
-                    let color = new SolidBrush(rankedColor.color |> getArgbFromRGBA)
+                    let color = new SolidBrush(rankedColor.color |> getRGBAToColor)
                     g.FillRectangle(color, x, y, 1, 1)
                 ))
             |> ignore )
-        
+
+    let colorToHtml color =
+        ColorTranslator.ToHtml(color)
+
+    let colorToRGBA (color:Color) =
+        {
+            red   = color.R |> int;
+            green = color.G |> int;
+            blue  = color.B |> int;
+            alpha = color.A |> int;
+        }
+
+    let serializeRankedColor rankedColor =
+        let colorString = rankedColor.color |> getRGBAToColor |> colorToHtml
+        sprintf "%s,%i" colorString rankedColor.rank
+
+    let deserializeRankedColor (s:string) =
+        let pair = s.Split(',')
+
+        // This is likely a better way to catch some errors. requires me adding
+        // some better handling of Option<RankedColors> for all my methods.
+        // or at least a way to lift my functions to support Option<RankedColors>.
+
+        // if (pair.Length = 2) then
+        //     let color = ColorTranslator.FromHtml(pair.[0]) |> colorToRGBA
+        //     Some { color = color; rank = pair.[1] |> Convert.ToInt32 }
+        // else
+        //     None
+
+        let color = ColorTranslator.FromHtml(pair.[0]) |> colorToRGBA
+        { color = color; rank = pair.[1] |> Convert.ToInt32 }
+
+
+    let deserializeRankedColors (s:string) =
+        s.Split(';')
+        |> Array.toList
+        |> List.map deserializeRankedColor

@@ -56,6 +56,8 @@
     <Compile Include="Utilities.fs" />
     <Compile Include="ImagePlayForm.fs" />
     <Compile Include="ColorBreakdownForm.fs" />
+    <Compile Include="ExportNoiseData.fs" />
+    <Compile Include="GenerateNoiseFromFile.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <PropertyGroup>

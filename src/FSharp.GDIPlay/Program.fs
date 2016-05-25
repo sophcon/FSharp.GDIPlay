@@ -6,6 +6,6 @@ module App =
     [<EntryPoint>]
     [<STAThread>]
     let main argv = 
-        let form = ColorBreakdownForm.GetForm
+        let form = GenerateNoiseFromFile.GetForm
         form.ShowDialog() |> ignore
         0
