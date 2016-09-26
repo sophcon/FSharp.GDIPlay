@@ -18,6 +18,9 @@ module ImagePlayForm =
         let gScroll = new HScrollBar()
         let bScroll = new HScrollBar()
         let distanceThreshold = new HScrollBar()
+        let rLabel = new TextBox()
+        let gLabel = new TextBox()
+        let bLabel = new TextBox()
 
         rScroll.Top <- 0
         rScroll.Left <- 130
@@ -25,6 +28,13 @@ module ImagePlayForm =
         rScroll.Minimum <- 0
         rScroll.Width <- 300
         rScroll.Height <-15
+        rScroll.ValueChanged.Add(fun a -> rLabel.Text <- rScroll.Value.ToString())
+
+        rLabel.Top <- 0
+        rLabel.Left <- 435
+        rLabel.Width <- 50
+        rLabel.Height <-15
+        rLabel.Text <- "0"
 
         gScroll.Top <- 20
         gScroll.Left <- 130
@@ -32,6 +42,13 @@ module ImagePlayForm =
         gScroll.Minimum <- 0
         gScroll.Width <- 300
         gScroll.Height <-15
+        gScroll.ValueChanged.Add(fun a -> gLabel.Text <- rScroll.Value.ToString())
+
+        gLabel.Top <- 20
+        gLabel.Left <- 435
+        gLabel.Width <- 50
+        gLabel.Height <-15
+        gLabel.Text <- "0"
 
         bScroll.Top <- 40
         bScroll.Left <- 130
@@ -39,13 +56,21 @@ module ImagePlayForm =
         bScroll.Minimum <- 0
         bScroll.Width <- 300
         bScroll.Height <-15
+        bScroll.ValueChanged.Add(fun a -> bLabel.Text <- rScroll.Value.ToString())
 
-        distanceThreshold.Top <- 310
-        distanceThreshold.Left <- 50
+        bLabel.Top <- 40
+        bLabel.Left <- 435
+        bLabel.Width <- 50
+        bLabel.Height <-15
+        bLabel.Text <- "0"
+
+        distanceThreshold.Top <- 65
+        distanceThreshold.Left <- 130
         distanceThreshold.Maximum <- 400
         distanceThreshold.Minimum <- 0
         distanceThreshold.Width <- 300
         distanceThreshold.Height <- 15
+
 
         generate.Text <- "Generate"
         generate.Width <- 120
@@ -54,7 +79,11 @@ module ImagePlayForm =
             match Utilities.GetFileFromDialog() with
             | Some path -> 
                 let img = new Bitmap(path)
-                let color = Color.FromArgb(rScroll.Value, gScroll.Value, bScroll.Value)
+                let r = rLabel.Text |> int
+                let g = gLabel.Text |> int
+                let b = bLabel.Text |> int
+
+                let color = Color.FromArgb(r, g, b)
 
                 imageControl.Image <- Tools.colorTransform img color
             | None -> () )
@@ -137,7 +166,7 @@ module ImagePlayForm =
             | _ -> ()
         )
 
-        imageControl.Top <- 55
+        imageControl.Top <- 95
         imageControl.AutoSize <- true
         imageCloseColors.Top <- 330
         imageCloseColors.AutoSize <- true
@@ -164,5 +193,8 @@ module ImagePlayForm =
         form.Controls.Add(gScroll)
         form.Controls.Add(bScroll)
         form.Controls.Add(distanceThreshold)
+        form.Controls.Add(rLabel)
+        form.Controls.Add(gLabel)
+        form.Controls.Add(bLabel)
 
         form

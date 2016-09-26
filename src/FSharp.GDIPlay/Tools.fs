@@ -43,6 +43,13 @@ module Tools =
 
         Math.Sqrt(redPortion + greenPortion + bluePortion)
 
+    let calculateColorDistanceTuple c1 c2 =
+        let redPortion   = Math.Pow((c1.red   |> float) - (c2.red   |> float), 2.0)
+        let greenPortion = Math.Pow((c1.green |> float) - (c2.green |> float), 2.0)
+        let bluePortion  = Math.Pow((c1.blue  |> float) - (c2.blue  |> float), 2.0)
+
+        (Math.Sqrt(redPortion), Math.Sqrt(greenPortion), Math.Sqrt(bluePortion))
+
     let calculateRankedColorDistance rc1 rc2 =
         calculateColorDistance rc1.color rc2.color
 
@@ -55,17 +62,17 @@ module Tools =
     let multiplyChannelByte (sourceChannel:byte) (overlayChannel:byte) =
         (float32(sourceChannel)/255.0f * float32(overlayChannel)/255.0f) * 255.0f |> byte
 
-    let pixelMap2 (sourceImageData:byte[]) (overlayImageData:byte[]) (blendFunction) = 
+    let pixelMap2 (sourceImageData:byte[]) (overlayImageData:byte[]) (blendFunction) =
         Array.map2 blendFunction sourceImageData overlayImageData
 
-    let createSolidColorImage width height color  = 
+    let createSolidColorImage width height color  =
         let image = new Bitmap(width, height, PixelFormat.Format32bppArgb)
         let graphics = Graphics.FromImage(image)
 
         graphics.FillRectangle(new SolidBrush(color), 0, 0, width, height)
         image
 
-    let createSolidColorOverlay (image:Bitmap) (color:Color) = 
+    let createSolidColorOverlay (image:Bitmap) (color:Color) =
         createSolidColorImage image.Width image.Height color
 
     let newImageByteArray (imageData:BitmapData) =
@@ -81,7 +88,7 @@ module Tools =
         image.UnlockBits data
 
         { data = buffer; stride = data.Stride }
-        
+
     let newBitmapFromImageData data =
         let height = data.data.Length / data.stride
         let width = data.stride / 4
@@ -100,12 +107,12 @@ module Tools =
     let blendImages (baseImage:Bitmap) (overlayImage:Bitmap) =
         let baseData = getByteArrayForImage baseImage
         let overlayData = getByteArrayForImage overlayImage
-    
+
         multiplyChannelByte
         |> pixelMap2 baseData.data overlayData.data
         |> getImageData baseData.stride
         |> newBitmapFromImageData
-        
+
     let colorTransform image color =
         createSolidColorOverlay image color
         |> blendImages image
@@ -172,7 +179,7 @@ module Tools =
 
     let renderColorDistanceGraph colors =
         let sqHeight, sqWidth, maxPerCol = 25, 25, 100
-        
+
         let rectangleGenerator = generateRectangle sqHeight sqWidth maxPerCol
         let labelGenerator = generateLabels sqHeight 300 100
 
@@ -198,7 +205,7 @@ module Tools =
             |> ignore
 
             rectangleData
-            |> List.map (fun (rect, color) -> 
+            |> List.map (fun (rect, color) ->
                 g.FillRectangle(new SolidBrush(color), rect))
             |> ignore)
 
@@ -208,9 +215,9 @@ module Tools =
 
         let height = sqHeight * maxPerCol
         let width = ((top / maxPerCol) + 1) * sqWidth
-        
+
         let rectangleGenerator = generateRectangle sqHeight sqWidth maxPerCol
-          
+
         let rankedColors = rankColors colors
 
         newBitmap height width
@@ -219,17 +226,17 @@ module Tools =
             rankedColors
             |> List.map (fun rcolor -> rcolor.color)
             |> List.mapi rectangleGenerator
-            |> List.map (fun (rect, color) -> 
+            |> List.map (fun (rect, color) ->
                 g.FillRectangle(new SolidBrush(color), rect))
             |> ignore)
 
     let createCompleteDistanceGraph rankedColors =
-        
+
         let rec innerCreate colors =
             match colors with
             | head::tail ->
 
-                let distances = 
+                let distances =
                     tail
                     |> List.map (fun rcolor ->
                         let dist = rcolor |> calculateRankedColorDistance head
@@ -250,7 +257,7 @@ module Tools =
 
     let colorListToByteArray colors =
         colors
-        |> List.collect (fun color -> 
+        |> List.collect (fun color ->
             [
                 (color.blue  |> byte);
                 (color.green |> byte);
@@ -267,8 +274,8 @@ module Tools =
     let getColorAverages rankedColors =
         let sum = rankedColors |> List.sumBy (fun rankedColor -> rankedColor.rank |> float)
 
-        rankedColors 
-        |> List.map (fun rankedColor -> 
+        rankedColors
+        |> List.map (fun rankedColor ->
             let average = (rankedColor.rank |> float) / sum
             { rankedColor = rankedColor; average = average })
 
@@ -280,7 +287,7 @@ module Tools =
         let max =
             averages |> List.map (fun aColor -> aColor.average) |> List.max
 
-        let width = 
+        let width =
             (padding * (rankedColors.Length - 1)) + (columnWidth * rankedColors.Length - 1)
 
         let rectangleData =
@@ -291,39 +298,39 @@ module Tools =
                 let top = height - columnHeight
 
                 (
-                    new SolidBrush(aColor.rankedColor.color |> getRGBAToColor), 
+                    new SolidBrush(aColor.rankedColor.color |> getRGBAToColor),
                     Rectangle(leftOffset, top, columnWidth, columnHeight)
                 ))
 
         newBitmap height width
-        |> applyGraphics (fun g -> 
+        |> applyGraphics (fun g ->
             rectangleData
             |> List.map (fun pair -> pair |> g.FillRectangle )
             |> ignore )
 
     let generateNoiseFromRankedColors width height rankedColors =
-        let sum = 
+        let sum =
             rankedColors
             |> List.sumBy (fun rankedColor -> rankedColor.rank |> float)
 
-        let averages = 
-            rankedColors 
-            |> List.map (fun rankedColor -> 
+        let averages =
+            rankedColors
+            |> List.map (fun rankedColor ->
                 (rankedColor, ((rankedColor.rank |> float) / sum) ) )
 
         let pixelTotal = height * width
         let rnd = Random()
 
         newBitmap height width
-        |> applyGraphics (fun g -> 
+        |> applyGraphics (fun g ->
             let largest, _ = averages.[0]
             g.FillRectangle(new SolidBrush(largest.color |> getRGBAToColor), 0, 0, width, height)
-            
+
             averages.[1..]
             |> List.map (fun (rankedColor, average) ->
                 Debug.WriteLine(sprintf "Creating '%i' pixels" ((pixelTotal |> float) * average |> int))
                 [0..((pixelTotal |> float) * average |> int)]
-                |> List.map (fun _ -> 
+                |> List.map (fun _ ->
                     let x, y =  rnd.Next(width), rnd.Next(height)
                     let color = new SolidBrush(rankedColor.color |> getRGBAToColor)
                     g.FillRectangle(color, x, y, 1, 1)
@@ -366,3 +373,61 @@ module Tools =
         s.Split(';')
         |> Array.toList
         |> List.map deserializeRankedColor
+
+    let migrateColorChannel distance colorChannel =
+        let result = Math.Abs((colorChannel - distance)|>int)
+
+        if result > 255 then 255 else if result < 0 then 0 else result
+        //(colorChannel |> float) * distance |> int
+
+    let getMigrationChannelPercentage c1 c2 =
+        (c1 - c2)
+
+    let getMigrationPercentageTuples dest src =
+        (
+            getMigrationChannelPercentage dest.red   src.red,
+            getMigrationChannelPercentage dest.blue  src.blue,
+            getMigrationChannelPercentage dest.green src.green
+        )
+
+    let migrateColors (targetRgb:Color) rankColors =
+        let max =
+            rankColors |> List.map (fun aColor -> aColor.rank) |> List.max
+
+        let maxColor =
+            rankColors |> List.filter (fun aColor -> aColor.rank = max) |> List.head
+
+        let sR,sB,sG = getMigrationPercentageTuples maxColor.color (targetRgb |> colorToRGBA)
+
+        let testColor =
+            {
+                red   = migrateColorChannel sR maxColor.color.red;
+                green = migrateColorChannel sG maxColor.color.green;
+                blue  = migrateColorChannel sB maxColor.color.blue;
+                alpha = maxColor.color.alpha
+            }
+//        (source - dest) / 255
+//        let redMultiplier    =
+//        let greenMultiplier  =
+//        let blueMultiplier   =
+
+        let nColors =
+            rankColors
+            |> List.map (fun aColor ->
+                //let r,b,g = getMigrationPercentageTuples aColor.color (targetRgb |> colorToRGBA)
+                let newColor =
+                    {
+                        red = migrateColorChannel sR aColor.color.red;
+                        green = migrateColorChannel sG aColor.color.green;
+                        blue = migrateColorChannel sB aColor.color.blue;
+                        alpha = aColor.color.alpha
+                    }
+
+                {
+                    rank = aColor.rank;
+                    color = newColor;
+
+                })
+
+        nColors
+

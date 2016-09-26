@@ -79,7 +79,7 @@ module ColorBreakdownForm =
         imageAfter.AutoSize <- true
         imageAfter.Click.Add(fun _ ->
             let saveDialog = new SaveFileDialog()
-            saveDialog.Filter <- "Jpeg File (*.jpg)|*.jpg"
+            saveDialog.Filter <- "JPEG File (*.jpg)|*.jpg"
             saveDialog.Title  <- "Save Processed Image"
             match saveDialog.ShowDialog() with
             | DialogResult.OK ->
