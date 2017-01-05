@@ -43,6 +43,13 @@ module Tools =
 
         Math.Sqrt(redPortion + greenPortion + bluePortion)
 
+    let calculateColorDistanceTuple c1 c2 =
+        let redPortion   = Math.Pow((c1.red   |> float) - (c2.red   |> float), 2.0)
+        let greenPortion = Math.Pow((c1.green |> float) - (c2.green |> float), 2.0)
+        let bluePortion  = Math.Pow((c1.blue  |> float) - (c2.blue  |> float), 2.0)
+
+        (Math.Sqrt(redPortion), Math.Sqrt(greenPortion), Math.Sqrt(bluePortion))
+
     let calculateRankedColorDistance rc1 rc2 =
         calculateColorDistance rc1.color rc2.color
 
@@ -366,3 +373,46 @@ module Tools =
         s.Split(';')
         |> Array.toList
         |> List.map deserializeRankedColor
+
+    let migrateColorChannel (distance:float) (colorChannel:int) =
+        (colorChannel |> float) * distance |> int
+
+    let getMigrationChannelPercentage c1 c2 =
+        ((c1 |> float) - (c2 |> float)) / 255.0
+
+    let getMigrationPercentageTuples src dest =
+        (
+            getMigrationChannelPercentage src.red dest.red,
+            getMigrationChannelPercentage src.blue dest.blue,
+            getMigrationChannelPercentage src.green dest.green
+        )
+
+    let migrateColors (targetRgb:Color) rankColors =
+        let max =
+            rankColors |> List.map (fun aColor -> aColor.rank) |> List.max
+
+        let maxColor = 
+            rankColors |> List.filter (fun aColor -> aColor.rank = max) |> List.head
+
+//        (source - dest) / 255
+//        let redMultiplier    = 
+//        let greenMultiplier  =  
+//        let blueMultiplier   =  
+
+        let nColors =
+            rankColors 
+            |> List.map (fun aColor -> 
+                let r,g,b = getMigrationPercentageTuples aColor.color (targetRgb |> colorToRGBA)
+                {
+                    rank = aColor.rank;
+                    color = 
+                    { 
+                        red = aColor.color.red |> migrateColorChannel r; 
+                        green = aColor.color.green |> migrateColorChannel g; 
+                        blue = aColor.color.blue |> migrateColorChannel b; 
+                        alpha = aColor.color.alpha 
+                    }
+                })
+
+        nColors
+
